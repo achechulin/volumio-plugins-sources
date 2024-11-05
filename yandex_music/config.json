@@ -1,0 +1,10 @@
+{
+  "token": {
+    "type": "string",
+    "value": ""
+  },
+  "hq": {
+    "type": "boolean",
+    "value": false
+  }
+}
