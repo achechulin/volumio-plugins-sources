@@ -1,0 +1,26 @@
+{
+	"name": "yandex_music",
+	"version": "0.1.0",
+	"description": "Yandex Music plugin for Volumio",
+	"main": "index.js",
+	"scripts": {
+		"test": "echo \"Error: no test specified\" && exit 1"
+	},
+	"author": "Chaa",
+	"license": "ISC",
+	"volumio_info": {
+		"prettyName": "Yandex Music",
+		"icon": "fa-spotify",
+		"plugin_type": "music_service"
+	},
+	"dependencies": {
+		"axios": "^0.27.2",
+		"fs-extra": "^0.28.0",
+		"kew": "^0.7.0",
+		"querystring": "^0.2.1",
+		"node-cache": "^4.1.1",
+		"tough-cookie": "^2.5.0",
+		"v-conf": "^1.4.0",
+		"yandex-music-client": "^0.4.3"
+	}
+}

@@ -1,0 +1,79 @@
+{
+  "page": {
+    "label": "TRANSLATE.YAM_CONFIGURATION"
+  },
+  "sections": [
+  {
+    "id": "section_account",
+    "element": "section",
+    "label": "TRANSLATE.YAM_ACCOUNT",
+    "onSave": {
+      "type": "controller",
+      "endpoint": "music_service/yandex_music",
+      "method": "accountLogin"
+    },
+    "saveButton": {
+      "label": "TRANSLATE.LOGIN",
+      "data": [
+        "username",
+        "password",
+        "refresh_token"
+      ]
+    },
+    "content": [
+      {
+        "id": "username",
+        "type": "text",
+        "element": "input",
+        "description": "TRANSLATE.USERNAME_TIP",
+        "label": "TRANSLATE.USERNAME",
+        "value": "",
+        "options": []
+      },
+      {
+        "id": "password",
+        "type": "password",
+        "element": "input",
+        "description": "TRANSLATE.PASSWORD_TIP",
+        "label": "TRANSLATE.PASSWORD",
+        "value": "",
+        "options": []
+      },
+      {
+        "id": "token",
+        "type": "text",
+        "element": "input",
+        "label": "TRANSLATE.TOKEN",
+        "value": "",
+        "attributes": [{"readonly": "readonly"}],
+        "hidden": true
+      }
+    ]
+  },
+  {
+    "id": "section_playback",
+    "element": "section",
+    "label": "TRANSLATE.PLAYBACK",
+    "onSave": {
+      "type": "controller",
+      "endpoint": "music_service/yandex_music",
+      "method": "configPlaybackSave"
+    },
+    "saveButton": {
+      "label": "TRANSLATE.SAVE",
+      "data": [
+        "hq"
+      ]
+    },
+    "content": [
+      {
+        "id": "hq",
+        "element": "switch",
+        "label": "TRANSLATE.PLAYBACK_HQ",
+        "doc": "TRANSLATE.PLAYBACK_HQ_TIP",
+        "value": false
+      }
+    ]
+  }
+  ]
+}
