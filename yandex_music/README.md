@@ -59,4 +59,7 @@ Status :Successfully updated plugin
 volumio:~/volumio-plugins-sources/yandex_music$ systemctl restart volumio
 ```
 
+## Thanks
 
+Thanks to [Yandex Music API by MarshalX](https://github.com/MarshalX/yandex-music-api),
+and [Yandex Music Extension by Alexander Cherkashin](https://github.com/acherkashin/yandex-music-extension).
