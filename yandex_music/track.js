@@ -3,9 +3,14 @@
 var libQ = require('kew');
 var axios = require("axios");
 var crypto = require("crypto");
+var querystring = require('querystring');
 var util = require('util');
 
-function getTrackUrl(client, track_id, hq, logger) {
+// Prefer MP3 320 kbps instead of AAC 256 kbps
+// (only in High Quality mode)
+const PREFER_MP3 = true;
+
+function getTrackV1(client, track_id, logger) {
     var defer = libQ.defer();
 
     var ids = track_id.split('@');
@@ -14,11 +19,7 @@ function getTrackUrl(client, track_id, hq, logger) {
     client.tracks.getDownloadInfo(track_id).then(function (resp) {
         var filtered = resp.result.filter(function (x) { return x.codec == 'mp3' && !x.preview; });
         var sort_fn = function (a, b) {
-            if (hq) {
-                return b.bitrateInKbps - a.bitrateInKbps; 
-            } else {
-                return a.bitrateInKbps - b.bitrateInKbps; 
-            }
+            return b.bitrateInKbps - a.bitrateInKbps; 
         };
         var sorted = filtered.sort(sort_fn);
         var codec = sorted[0].codec;
@@ -39,6 +40,65 @@ function getTrackUrl(client, track_id, hq, logger) {
     });
 
     return defer.promise;
+};
+
+function getTrackV2(client, track_id, logger) {
+    var defer = libQ.defer();
+
+    var ids = track_id.split('@');
+    ids = ids[0].split(':');
+    track_id = ids[0];
+
+    var now = new Date().getTime();
+    var m = (PREFER_MP3) ? `${now}${track_id}losslessflacmp3raw` : `${now}${track_id}losslessflacaache-aacmp3raw`;
+    var s = crypto.createHmac('sha256', 'kzqU4XhfCaY6B6JTHODeq5').update(m).digest("base64");
+    s = s.replace('=', '');
+    var params = {
+        'ts': now,
+        'trackId': track_id,
+        'quality': 'lossless',
+        'codecs': (PREFER_MP3) ? 'flac,mp3' : 'flac,aac,he-aac,mp3',
+        'transports': 'raw',
+        'sign': s,
+    };
+    client.request.request({
+        method: 'GET',
+        url: '/get-file-info',
+        query: params,
+    }).then(function (resp) {
+        var info = resp.result.downloadInfo;
+        var url;
+        if (info.codec == 'flac' || info.codec == 'aac') {
+            // MPD requires proper Content-Type header for FLAC decoding,
+            // so we are using local proxy to change headers.
+            // Also faad, default decoder for AAC, fails with
+            // error decoding AAC stream, so we are using local proxy
+            // to switch to ffmpeg decoder.
+            // And .flac file extension added to url so that the UI can show FLAC icon.
+            // But .aac file extension selects faad decoder, and will lead to error.
+            url = 'http://localhost:6601/?' + querystring.stringify({
+                'codec': info.codec,
+                'url': info.url,
+                'ext': (info.codec == 'flac') ? '.flac' : '',
+            });
+        } else {
+            // MP3 plays directly, and UI show MP3 icon.
+            url = info.url;
+        }
+        defer.resolve({'uri': url, 'codec': info.codec, 'bitrate': info.bitrate});
+    }).catch(function (err) {
+        defer.reject(new Error(err));
+    });
+
+    return defer.promise;
+};
+
+function getTrackUrl(client, track_id, hq, logger) {
+    if (hq) {
+        return getTrackV2(client, track_id, logger);
+    } else {
+        return getTrackV1(client, track_id, logger);
+    }
 };
 
 module.exports = getTrackUrl;

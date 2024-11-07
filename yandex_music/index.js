@@ -12,6 +12,7 @@ var NodeCache = require('node-cache');
 var getToken = require('./token.js');
 var getTrackUrl = require('./track.js');
 var playlist = require('./playlist.js');
+var proxy = require('./proxy.js');
 var util = require('util');
 
 module.exports = yandexMusic;
@@ -30,6 +31,8 @@ function yandexMusic(context) {
     self.titles = {};
     self.playlists = {};
     self.current_track = false;
+
+    self.proxy = new proxy();
 }
 
 yandexMusic.prototype.onVolumioStart = function()
@@ -50,7 +53,13 @@ yandexMusic.prototype.onStart = function() {
 
     self.addToBrowseSources();
     self.mpdPlugin = self.commandRouter.pluginManager.getPlugin('music_service', 'mpd');
+
     self.initClient();
+
+    self.hq = !!self.config.get('hq');
+    if (self.hq) {
+        self.proxy.start();
+    }
 
     return libQ.resolve();
 };
@@ -59,6 +68,8 @@ yandexMusic.prototype.onStop = function() {
     var self = this;
 
     self.removeFromBrowseSources();
+
+    self.proxy.stop();
 
     return libQ.resolve();
 };
@@ -95,8 +106,6 @@ yandexMusic.prototype.getI18n = function (key) {
 
 yandexMusic.prototype.initClient = function() {
     var self = this;
-
-    self.hq = !!self.config.get('hq');
 
     self.client = new clientApi({
         BASE: 'https://api.music.yandex.net:443',
@@ -222,6 +231,9 @@ yandexMusic.prototype.configPlaybackSave = function(data) {
     self.commandRouter.pushToastMessage('success', self.getI18n('PLAYBACK'), self.getI18n('PLAYBACK_UPDATED'));
 
     self.hq = !!self.config.get('hq');
+    if (self.hq) {
+        self.proxy.start();
+    }
 
     return libQ.resolve();
 };
