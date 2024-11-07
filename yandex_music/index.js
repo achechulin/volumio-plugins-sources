@@ -774,6 +774,30 @@ yandexMusic.prototype.explodeUri = function(curUri) {
                 p = new playlist(self.client, self.user_id);
             }
             response = p.explodeTrack(curUri);
+        } else if (curUri.startsWith('yandex_music/myplaylists')) {
+            var defer = libQ.defer();
+            self.client.user.getPlayLists(self.uid).then(function (resp) {
+                var promises = [];
+                for (var i = 0; i < resp.result.length; ++i) {
+                    var id = resp.result[i].uid + ':' + resp.result[i].kind;
+                    if (!self.playlists[id]) {
+                        self.playlists[id] = new playlist(self.client, self.uid, id, 'playlist', self.logger);
+                    }
+                    promises.push(self.playlists[id].fetch());
+                }
+                libQ.all(promises).then(function (playlist_tracks) {
+                    var tracks = [];
+                    for (var i = 0; i < playlist_tracks.length; ++i) {
+                        tracks = tracks.concat(playlist_tracks[i]);
+                    }
+                    defer.resolve(tracks);
+                }).fail(function (err) {
+                    defer.reject(new Error(err));
+                });
+            }).catch(function (err) {
+                defer.reject(new Error(err));
+            });
+            response = defer.promise;
         } else if (curUri.startsWith('yandex_music/radio/')) {
             var playlist_id = uriParts.pop();
             if (!self.playlists[playlist_id]) {
