@@ -40,7 +40,7 @@ Playlist.prototype.trackToSong = function(track, album, artist, playlist_id) {
         title: track.title,
         album: alb ? alb.title : '',
         artist: art ? art.name : '',
-        duration: Math.ceil(track.durationMs / 1000),
+        duration: Math.round(track.durationMs / 1000),
         albumart: album ? getCoverUri(album.coverUri, 200) : getCoverUri(track.coverUri, 200),
         uri: 'yandex_music/track/' + id,
         samplerate: '',
@@ -51,6 +51,9 @@ Playlist.prototype.trackToSong = function(track, album, artist, playlist_id) {
 
 Playlist.prototype.landingToPlaylist = function(landing) {
     var id = landing.uid + ':' + landing.kind;
+    var cover_uri = (landing.cover.uri) ? landing.cover.uri : (
+        (landing.cover.itemsUri && landing.cover.itemsUri[0]) ? landing.cover.itemsUri[0] : ''
+    );
     return {
         id: id,
         service: 'yandex_music',
@@ -58,7 +61,7 @@ Playlist.prototype.landingToPlaylist = function(landing) {
         name: landing.title,
         title: landing.title,
         duration: (landing.durationMs) ? Math.ceil(landing.durationMs / 1000) : 0,
-        albumart: (landing.cover.uri) ? getCoverUri(landing.cover.uri, 200) : '/albumart?sourceicon=music_service/yandex_music/icons/playlist.png',
+        albumart: (cover_uri) ? getCoverUri(cover_uri, 200) : '/albumart?sourceicon=music_service/yandex_music/icons/playlist.png',
         uri: 'yandex_music/playlist/' + id,
     };
 };
