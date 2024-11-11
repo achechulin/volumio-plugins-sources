@@ -340,17 +340,8 @@ yandexMusic.prototype.listRoot = function () {
                         "grid","list"
                     ],
                     "type": "title",
-                    "title": self.getI18n('MY'),
+                    "title": self.getI18n('MY_WAVE'),
                     "items": [
-                        {
-                            service: 'yandex_music',
-                            type: 'playlist',
-                            title: self.titles['user:onyourwave'],
-                            artist: '',
-                            album: '',
-                            albumart: '/albumart?sourceicon=music_service/yandex_music/icons/track.png',
-                            uri: 'yandex_music/radio/user:onyourwave'
-                        },
                         {
                             service: 'yandex_music',
                             type: 'playlist',
@@ -360,6 +351,15 @@ yandexMusic.prototype.listRoot = function () {
                             albumart: '/albumart?sourceicon=music_service/yandex_music/icons/playlist.png',
                             uri: 'yandex_music/myplaylists'
                         },
+                    ]
+                },
+                {
+                    "availableListViews": [
+                        "grid","list"
+                    ],
+                    "type": "title",
+                    "title": self.getI18n('MY_SELECTED'),
+                    "items": [
                     ]
                 },
                 {
@@ -402,7 +402,7 @@ yandexMusic.prototype.listRoot = function () {
             var blocks = block.entities.map(function (x) { return p.landingToPlaylist(x.data.data); });
             for (var i = 0; i < blocks.length; ++i) {
                 self.titles[blocks[i].id] = blocks[i].title;
-                response.navigation.lists[0].items.push(blocks[i]);
+                response.navigation.lists[1].items.push(blocks[i]);
             }
         }
         // New releases
@@ -410,7 +410,7 @@ yandexMusic.prototype.listRoot = function () {
         if (block) {
             var blocks = block.entities.map(function (x) { return p.albumToAlbum(x.data); });
             for (var i = 0; i < blocks.length; ++i) {
-                response.navigation.lists[1].items.push(blocks[i]);
+                response.navigation.lists[2].items.push(blocks[i]);
             }
         }
         // Popular playlists
@@ -418,7 +418,8 @@ yandexMusic.prototype.listRoot = function () {
         if (block) {
             var blocks = block.entities.map(function (x) { return p.landingToPlaylist(x.data); });
             for (var i = 0; i < blocks.length; ++i) {
-                response.navigation.lists[2].items.push(blocks[i]);
+                self.titles[blocks[i].id] = blocks[i].title;
+                response.navigation.lists[3].items.push(blocks[i]);
             }
         }
         // Recently played
@@ -427,10 +428,20 @@ yandexMusic.prototype.listRoot = function () {
             var albums = block.entities.filter(function (x) { return x.data.context == 'album'; });
             var blocks = albums.map(function (x) { return p.albumToAlbum(x.data.payload); });
             for (var i = 0; i < blocks.length; ++i) {
-                response.navigation.lists[3].items.push(blocks[i]);
+                response.navigation.lists[4].items.push(blocks[i]);
             }
         }
-        defer.resolve(response);
+        // Radio dashboard
+        self.client.rotor.getRotorStationsDashboard().then(function (resp) {
+            var blocks = resp.result.stations.map(function (x) { return p.stationToRadio(x.station); });
+            for (var i = 0; i < blocks.length; ++i) {
+                self.titles[blocks[i].id] = blocks[i].title;
+                response.navigation.lists[0].items.push(blocks[i]);
+            }
+            defer.resolve(response);
+        }).catch(function (err) {
+            defer.resolve(response);
+        });
     }).catch(function (err) {
         defer.reject(new Error());
     });
@@ -462,6 +473,7 @@ yandexMusic.prototype.browseMyPlaylists = function () {
         var p = new playlist(self.client, self.user_id);
         var blocks = resp.result.map(function (x) { return p.landingToPlaylist(x); });
         for (var i = 0; i < blocks.length; ++i) {
+            self.titles[blocks[i].id] = blocks[i].title;
             response.navigation.lists[0].items.push(blocks[i]);
         }
 

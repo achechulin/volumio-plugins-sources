@@ -95,6 +95,21 @@ Playlist.prototype.artistToArtist = function(artist) {
     };
 };
 
+Playlist.prototype.stationToRadio = function(station) {
+    var id = station.id.type + ':' + station.id.tag;
+    return {
+        id: id,
+        service: 'yandex_music',
+        type: 'playlist',
+        name: station.name,
+        title: station.name,
+        artist: '',
+        album: '',
+        albumart: getCoverUri(station.fullImageUrl, 200),
+        uri: 'yandex_music/radio/' + id,
+    };
+};
+
 Playlist.prototype.fetch = function() {
     var self = this;
 
