@@ -380,11 +380,20 @@ yandexMusic.prototype.listRoot = function () {
                     "items": [
                     ]
                 },
+                {
+                    "availableListViews": [
+                        "grid","list"
+                    ],
+                    "type": "title",
+                    "title": self.getI18n('MY_PLAY_CONTEXTS'),
+                    "items": [
+                    ]
+                },
             ]
         }
     };
 
-    self.client.landing.getLandingBlocks('personal-playlists,new-releases,new-playlists').then(function (resp) {
+    self.client.landing.getLandingBlocks('personal-playlists,new-releases,new-playlists,play-contexts').then(function (resp) {
         var p = new playlist(self.client, self.user_id);
         var block;
         // Selected for You
@@ -410,6 +419,15 @@ yandexMusic.prototype.listRoot = function () {
             var blocks = block.entities.map(function (x) { return p.landingToPlaylist(x.data); });
             for (var i = 0; i < blocks.length; ++i) {
                 response.navigation.lists[2].items.push(blocks[i]);
+            }
+        }
+        // Recently played
+        block = resp.result.blocks.find(function (x) { return x.type == 'play-contexts'; });
+        if (block) {
+            var albums = block.entities.filter(function (x) { return x.data.context == 'album'; });
+            var blocks = albums.map(function (x) { return p.albumToAlbum(x.data.payload); });
+            for (var i = 0; i < blocks.length; ++i) {
+                response.navigation.lists[3].items.push(blocks[i]);
             }
         }
         defer.resolve(response);
