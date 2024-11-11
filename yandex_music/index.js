@@ -478,10 +478,9 @@ yandexMusic.prototype.browseRadio = function (playlist_id) {
     var self = this;
     var defer = libQ.defer();
 
-    if (!self.playlists[playlist_id]) {
-        self.playlists[playlist_id] = new playlist(self.client, self.uid, playlist_id, 'radio', self.logger);
-        self.playlists[playlist_id].title = self.titles[playlist_id];
-    }
+    // Always create new radio
+    self.playlists[playlist_id] = new playlist(self.client, self.uid, playlist_id, 'radio', self.logger);
+    self.playlists[playlist_id].title = self.titles[playlist_id];
 
     self.playlists[playlist_id].fetch().then(function (tracks) {
         var response = {
