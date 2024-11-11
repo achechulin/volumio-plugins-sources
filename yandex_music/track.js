@@ -9,6 +9,9 @@ var util = require('util');
 // Prefer MP3 320 kbps instead of AAC 256 kbps
 // (only in High Quality mode)
 const PREFER_MP3 = true;
+// Prefer proxy for MP3 playback to avoid
+// curl/GnuTLS error in Volumio 2
+const PREFER_PROXY = true;
 
 function getTrackV1(client, track_id, logger) {
     var defer = libQ.defer();
@@ -68,7 +71,7 @@ function getTrackV2(client, track_id, logger) {
     }).then(function (resp) {
         var info = resp.result.downloadInfo;
         var url;
-        if (info.codec == 'flac' || info.codec == 'aac') {
+        if (info.codec == 'flac' || info.codec == 'aac' || PREFER_PROXY) {
             // MPD requires proper Content-Type header for FLAC decoding,
             // so we are using local proxy to change headers.
             // Also faad, default decoder for AAC, fails with
@@ -79,7 +82,7 @@ function getTrackV2(client, track_id, logger) {
             url = 'http://localhost:6601/?' + querystring.stringify({
                 'codec': info.codec,
                 'url': info.url,
-                'ext': (info.codec == 'flac') ? '.flac' : '',
+                'ext': (info.codec == 'flac' || info.codec == 'mp3') ? '.' + info.codec : '',
             });
         } else {
             // MP3 plays directly, and UI show MP3 icon.
