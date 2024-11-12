@@ -118,6 +118,8 @@ yandexMusic.prototype.initClient = function() {
 
     const status = self.client.account.getAccountStatus().then(function (resp) {
         self.uid = resp.result.account.uid;
+    }).catch(function (err) {
+        // Invalid token
     });
 
     self.playlists = {};
@@ -138,13 +140,15 @@ yandexMusic.prototype.getUIConfig = function() {
         {
             var token = self.config.get('token', 'none');
             if (!token || token == 'none') {
-                uiconf.sections[0].content[0].value = self.config.get('username', '');
+                uiconf.sections[0].content[0].value.value = 1;
                 uiconf.sections[0].content[1].value = self.config.get('password', '');
             } else {
+                uiconf.sections[0].content[0].value.value = 2;
                 uiconf.sections[0].content[0].hidden = true;
                 uiconf.sections[0].content[1].hidden = true;
-                uiconf.sections[0].content[2].value = token;
-                uiconf.sections[0].content[2].hidden = false;
+                uiconf.sections[0].content[2].hidden = true;
+                uiconf.sections[0].content[3].attributes = [{"readonly": true}];
+                uiconf.sections[0].content[3].value = token;
                 uiconf.sections[0].saveButton.label = self.getI18n('LOGOUT');
                 uiconf.sections[0].onSave.method = 'accountLogout';
             }
@@ -176,36 +180,36 @@ yandexMusic.prototype.accountLogin = function(data) {
     var self = this;
     var defer = libQ.defer();
 
-    if (data && data['username'] && data['password']) {
-        getToken(data['username'], data['password'], self.logger).then(function (token)
-        {
-            self.config.set('token', token);
-            self.commandRouter.pushToastMessage('success', self.getI18n('YAM_ACCOUNT'), self.getI18n('LOGIN_SUCCESSFUL'));
-            self.initClient();
+    getToken(data, self.logger).then(function (token) {
+        self.config.set('token', token);
+        self.commandRouter.pushToastMessage('success', self.getI18n('YAM_ACCOUNT'), self.getI18n('LOGIN_SUCCESSFUL'));
+        self.initClient();
 
-            var config = self.getUIConfig();
-            config.then(function(conf) {
-                self.commandRouter.broadcastMessage('pushUiConfig', conf);
-            });
-            defer.resolve();
-        }).fail(function (err)
-        {
-            var err_msg;
-            if (err instanceof Error && err.message == 'account_not_found') {
-                err_msg = self.getI18n('LOGIN_FAILED_INVALID_ACCOUNT');
-            } else if (err instanceof Error && err.message == 'password_not_matched') {
-                err_msg = self.getI18n('LOGIN_FAILED_INVALID_PASSWORD');
-            } else {
-                err_msg = self.getI18n('LOGIN_FAILED');
-            }
-            self.commandRouter.pushToastMessage('error', self.getI18n('YAM_ACCOUNT'), err_msg);
-            self.logger.error('Unable to login, getToken failed: ', err);
-            defer.resolve();
+        var config = self.getUIConfig();
+        config.then(function(conf) {
+            self.commandRouter.broadcastMessage('pushUiConfig', conf);
         });
-    } else {
-        self.commandRouter.pushToastMessage('error', self.getI18n('YAM_ACCOUNT'), self.getI18n('LOGIN_FAILED_NO_USERNAME'));
+
         defer.resolve();
-    }
+    }).fail(function (err) {
+        var err_msg;
+        if (err instanceof Error && err.message == 'no_username') {
+            err_msg = self.getI18n('LOGIN_FAILED_NO_USERNAME');
+        } else if (err instanceof Error && err.message == 'account_not_found') {
+            err_msg = self.getI18n('LOGIN_FAILED_INVALID_ACCOUNT');
+        } else if (err instanceof Error && err.message == 'redirect_url') {
+            err_msg = self.getI18n('LOGIN_FAILED_REDIRECT_NOT_SUPPORTED');
+        } else if (err instanceof Error && err.message == 'password_not_matched') {
+            err_msg = self.getI18n('LOGIN_FAILED_INVALID_PASSWORD');
+        } else if (err instanceof Error && err.message == 'invalid_token') {
+            err_msg = self.getI18n('LOGIN_FAILED_INVALID_TOKEN');
+        } else {
+            err_msg = self.getI18n('LOGIN_FAILED');
+        }
+        self.commandRouter.pushToastMessage('error', self.getI18n('YAM_ACCOUNT'), err_msg);
+        self.logger.error('Unable to login, getToken failed: ', err);
+        defer.resolve();
+    });
 
     return defer.promise;
 };
@@ -479,7 +483,6 @@ yandexMusic.prototype.browseMyPlaylists = function () {
 
         defer.resolve(response);
     }).catch(function (err) {
-        self.logger.error(util.inspect(err));
         defer.reject(new Error());
     });
 

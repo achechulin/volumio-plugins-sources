@@ -4,8 +4,9 @@ var libQ = require('kew');
 var querystring = require('querystring');
 var axios = require('axios');
 var tough = require('tough-cookie');
+var util = require('util');
 
-function getToken(username, password) {
+function getTokenForUser(username, password, logger) {
     var defer = libQ.defer();
 
     // https://github.com/AlexxIT/YandexStation/blob/master/custom_components/yandex_station/core/yandex_session.py
@@ -47,43 +48,47 @@ function getToken(username, password) {
                 }).then(function (resp) {
                     // login_cookies
                     if (resp.data.status == 'ok') {
-                        var c = resp.headers['set-cookie'];
-                        if (c) {
-                            for (var i = 0; i < c.length; ++i) {
-                                cookies.setCookieSync(c[i], 'https://passport.yandex.ru');
+                        if (!resp.data.redirect_url) {
+                            var c = resp.headers['set-cookie'];
+                            if (c) {
+                                for (var i = 0; i < c.length; ++i) {
+                                    cookies.setCookieSync(c[i], 'https://passport.yandex.ru');
+                                }
                             }
+                            var c_arr = cookies.getCookiesSync('https://passport.yandex.ru');
+                            var ya_cookie = c_arr.map(function (x) { return '' + x.key + '=' + x.value; }).join("; ");
+                            var params = querystring.stringify({
+                                'client_id': 'c0ebe342af7d48fbbbfcf2d2eedb8f9e',
+                                'client_secret': 'ad0a908f0aa341a182a37ecd75bc319e'
+                            });
+                            axios.post('https://mobileproxy.passport.yandex.net/1/bundle/oauth/token_by_sessionid', params, {
+                                'headers': { "Ya-Client-Host": "passport.yandex.ru", "Content-Type": "application/x-www-form-urlencoded", 
+                                    "Ya-Client-Cookie": ya_cookie }
+                            }).then(function (resp) {
+                                // get_music_token
+                                if (resp.data.status == 'ok') {
+                                    var params = querystring.stringify({
+                                        'client_secret': '53bc75238f0c4d08a118e51fe9203300',
+                                        'client_id': '23cabbbdc6cd418abb4b39c32c41195d',
+                                        'grant_type': 'x-token',
+                                        'access_token': resp.data.access_token
+                                    });
+                                    axios.post('https://oauth.mobile.yandex.net/1/token', params, {
+                                        'headers': { "Content-Type": "application/x-www-form-urlencoded" }
+                                    }).then(function (resp) {
+                                        defer.resolve(resp.data.access_token);
+                                    }).catch(function (err) {
+                                        defer.reject(new Error(err));
+                                    });
+                                } else {
+                                    defer.reject(new Error('token_error'));
+                                }
+                            }).catch(function (err) {
+                                defer.reject(new Error(err));
+                            });
+                        } else {
+                            defer.reject(new Error('redirect_url'));
                         }
-                        var c_arr = cookies.getCookiesSync('https://passport.yandex.ru');
-                        var ya_cookie = c_arr.map(function (x) { return '' + x.key + '=' + x.value; }).join("; ");
-                        var params = querystring.stringify({
-                            'client_id': 'c0ebe342af7d48fbbbfcf2d2eedb8f9e',
-                            'client_secret': 'ad0a908f0aa341a182a37ecd75bc319e'
-                        });
-                        axios.post('https://mobileproxy.passport.yandex.net/1/bundle/oauth/token_by_sessionid', params, {
-                            'headers': { "Ya-Client-Host": "passport.yandex.ru", "Content-Type": "application/x-www-form-urlencoded", 
-                                "Ya-Client-Cookie": ya_cookie }
-                        }).then(function (resp) {
-                            // get_music_token
-                            if (resp.data.status == 'ok') {
-                                var params = querystring.stringify({
-                                    'client_secret': '53bc75238f0c4d08a118e51fe9203300',
-                                    'client_id': '23cabbbdc6cd418abb4b39c32c41195d',
-                                    'grant_type': 'x-token',
-                                    'access_token': resp.data.access_token
-                                });
-                                axios.post('https://oauth.mobile.yandex.net/1/token', params, {
-                                    'headers': { "Content-Type": "application/x-www-form-urlencoded" }
-                                }).then(function (resp) {
-                                    defer.resolve(resp.data.access_token);
-                                }).catch(function (err) {
-                                    defer.reject(new Error(err));
-                                });
-                            } else {
-                                defer.reject(new Error('token_error'));
-                            }
-                        }).catch(function (err) {
-                            defer.reject(new Error(err));
-                        });
                     } else {
                         defer.reject(new Error('password_not_matched'));
                     }
@@ -101,6 +106,30 @@ function getToken(username, password) {
     });
 
     return defer.promise;
+}
+
+function getTokenForToken(token, logger) {
+    var defer = libQ.defer();
+
+    axios.get('https://api.music.yandex.net/account/status', 
+        {headers: {'Authorization': 'OAuth ' + token}}
+    ).then(function (resp) {
+        defer.resolve(token);
+    }).catch(function (err) {
+        defer.reject(new Error('invalid_token'));
+    });
+
+    return defer.promise;
+}
+
+function getToken(data, logger) {
+    if (data && data['auth'] && data['auth']['value'] == 1 && data['username'] && data['password']) {
+        return getTokenForUser(data['username'], data['password'], logger);
+    } else if (data && data['auth'] && data['auth']['value'] == 2 && data['token']) {
+        return getTokenForToken(data['token'], logger);
+    } else {
+        return libQ.reject(new Error('no_username'));
+    }
 }
 
 module.exports = getToken;
