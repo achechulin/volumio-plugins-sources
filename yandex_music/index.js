@@ -398,7 +398,7 @@ yandexMusic.prototype.listRoot = function () {
     };
 
     self.client.landing.getLandingBlocks('personal-playlists,new-releases,new-playlists,play-contexts').then(function (resp) {
-        var p = new playlist(self.client, self.user_id);
+        var p = new playlist(self.client, self.uid);
         var block;
         // Selected for You
         block = resp.result.blocks.find(function (x) { return x.type == 'personal-playlists'; });
@@ -468,13 +468,26 @@ yandexMusic.prototype.browseMyPlaylists = function () {
                         ],
                         "type": "title",
                         "title": self.getI18n('MY_PLAYLISTS'),
-                        "items": [],
+                        "items": [
+                            {
+                                id: self.uid + ':3',
+                                service: 'yandex_music',
+                                type: 'playlist',
+                                name: self.getI18n('MY_LIKES'),
+                                title: self.getI18n('MY_LIKES'),
+                                albumart: 'https://avatars.yandex.net/get-music-user-playlist/11418140/favorit-playlist-cover.bb48fdb9b9f4/200x200',
+                                uri: 'yandex_music/playlist/' + self.uid + ':3',
+                            },
+                        ],
                     }
                 ]
             }
         };
 
-        var p = new playlist(self.client, self.user_id);
+        // Likes playlist: kind=3
+        self.titles[self.uid + ':3'] = self.getI18n('MY_LIKES');
+
+        var p = new playlist(self.client, self.uid);
         var blocks = resp.result.map(function (x) { return p.landingToPlaylist(x); });
         for (var i = 0; i < blocks.length; ++i) {
             self.titles[blocks[i].id] = blocks[i].title;
@@ -803,7 +816,7 @@ yandexMusic.prototype.explodeUri = function(curUri) {
             var playlist_id = (ids.length > 0) ? ids[1] : '';
             var p = self.playlists[playlist_id];
             if (!p) {
-                p = new playlist(self.client, self.user_id);
+                p = new playlist(self.client, self.uid);
             }
             response = p.explodeTrack(curUri);
         } else if (curUri.startsWith('yandex_music/myplaylists')) {
@@ -939,7 +952,7 @@ yandexMusic.prototype._search = function (text, type) {
             ]
         };
 
-        var p = new playlist(self.client, self.user_id);
+        var p = new playlist(self.client, self.uid);
         var items;
         var block;
 
