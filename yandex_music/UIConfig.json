@@ -15,12 +15,24 @@
     "saveButton": {
       "label": "TRANSLATE.LOGIN",
       "data": [
+        "auth",
         "username",
         "password",
-        "refresh_token"
+        "token"
       ]
     },
     "content": [
+      {
+        "id": "auth",
+        "element": "select",
+        "description": "TRANSLATE.AUTH_TIP",
+        "label": "TRANSLATE.AUTH_TYPE",
+        "value": {"value": 1, "label": "TRANSLATE.AUTH_TYPE_PASSWORD"},
+        "options": [
+          {"value": 1, "label": "TRANSLATE.AUTH_TYPE_PASSWORD"},
+          {"value": 2, "label": "TRANSLATE.AUTH_TYPE_TOKEN"}
+        ]
+      },
       {
         "id": "username",
         "type": "text",
@@ -28,7 +40,7 @@
         "description": "TRANSLATE.USERNAME_TIP",
         "label": "TRANSLATE.USERNAME",
         "value": "",
-        "options": []
+        "visibleIf": {"field": "auth", "value": 1}
       },
       {
         "id": "password",
@@ -37,16 +49,17 @@
         "description": "TRANSLATE.PASSWORD_TIP",
         "label": "TRANSLATE.PASSWORD",
         "value": "",
-        "options": []
+        "visibleIf": {"field": "auth", "value": 1}
       },
       {
         "id": "token",
         "type": "text",
         "element": "input",
+        "description": "TRANSLATE.TOKEN_TIP",
         "label": "TRANSLATE.TOKEN",
         "value": "",
-        "attributes": [{"readonly": "readonly"}],
-        "hidden": true
+        "attributes": [],
+        "visibleIf": {"field": "auth", "value": 2}
       }
     ]
   },
