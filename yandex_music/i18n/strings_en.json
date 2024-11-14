@@ -2,6 +2,7 @@
   "YM":"Yandex Music",
   "YAM_CONFIGURATION":"Yandex Music Configuration",
   "YAM_ACCOUNT":"Yandex Music Account",
+  "NETWORK_ERROR":"Network error",
   "AUTH_TYPE":"Auth type",
   "AUTH_TIP":"To browse your tracks, albums and playlists, you need a Yandex Music subscription",
   "AUTH_TYPE_PASSWORD":"Password",

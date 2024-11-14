@@ -107,6 +107,10 @@ yandexMusic.prototype.getI18n = function (key) {
 yandexMusic.prototype.initClient = function() {
     var self = this;
 
+    self.uid = undefined;
+    self.playlists = {};
+    self.browseCache.del('root');
+
     self.client = new clientApi({
         BASE: 'https://api.music.yandex.net:443',
         HEADERS: {
@@ -116,13 +120,32 @@ yandexMusic.prototype.initClient = function() {
         }
     });
 
-    const status = self.client.account.getAccountStatus().then(function (resp) {
-        self.uid = resp.result.account.uid;
-    }).catch(function (err) {
-        // Invalid token
-    });
+    self.checkUid();
+};
 
-    self.playlists = {};
+yandexMusic.prototype.checkUid = function() {
+    var defer = libQ.defer();
+    var self = this;
+
+    if (self.uid === undefined) {
+        self.client.account.getAccountStatus().then(function (resp) {
+            self.uid = resp.result.account.uid;
+            defer.resolve(self.uid);
+        }).catch(function (err) {
+            if (err && err.status == 401) {
+                // Invalid token
+                self.uid = false;
+                defer.resolve(self.uid);
+            } else {
+                // Network problem
+                defer.reject(new Error());
+            }
+        });
+    } else {
+        defer.resolve(self.uid);
+    }
+
+    return defer.promise;
 };
 
 // Configuration Methods -----------------------------------------------------------------------------
@@ -219,6 +242,7 @@ yandexMusic.prototype.accountLogout = function(data) {
 
     self.config.set('token', 'none');
     self.commandRouter.pushToastMessage('success', self.getI18n('YAM_ACCOUNT'), self.getI18n('LOGOUT_SUCCESSFUL'));
+    self.initClient();
 
     var config = self.getUIConfig();
     config.then(function(conf) {
@@ -293,40 +317,54 @@ yandexMusic.prototype.browseRoot = function () {
     var self = this;
     var defer = libQ.defer();
 
-    if (!self.uid) {
+    self.checkUid().then(function (uid) {
+        if (!self.uid) {
+            var response = {
+                navigation: {
+                    lists: [
+                        {
+                            "availableListViews": ["list"],
+                            "type": "title",
+                            "title": self.getI18n('USERNAME_TIP'),
+                            "items": []
+                        },
+                    ]
+                }
+            };
+            defer.resolve(response);
+        } else {
+            self.browseCache.get('root', function(err, value){
+                if (!err) {
+                    // Root has not been cached yet
+                    if (value == undefined) {
+                        self.listRoot().then( (data) => {
+                            // Set root cache
+                            self.browseCache.set('root', data);
+                            defer.resolve(data);
+                        });
+                    } else {
+                        // Cached Root
+                        defer.resolve(value);
+                    }
+                } else {
+                    defer.reject(new Error(err));
+                }
+            });
+        }
+    }).fail(function (err) {
         var response = {
             navigation: {
                 lists: [
                     {
-                        "availableListViews": [
-                            "grid","list"
-                        ],
+                        "availableListViews": ["list"],
                         "type": "title",
-                        "title": self.getI18n('USERNAME_TIP'),
+                        "title": self.getI18n('NETWORK_ERROR'),
                         "items": []
                     },
                 ]
             }
         };
-        return libQ.resolve(response);
-    }
-
-    self.browseCache.get('root', function(err, value){
-        if (!err) {
-            // Root has not been cached yet
-            if (value == undefined) {
-                self.listRoot().then( (data) => {
-                    // Set root cache
-                    self.browseCache.set('root', data);
-                    defer.resolve(data);
-                });
-            } else {
-                // Cached Root
-                defer.resolve(value);
-            }
-        } else {
-            self.logger.error('Could not fetch root yandex_music folder cached data: ', err);
-        }
+        defer.resolve(response);
     });
 
     return defer.promise;
@@ -805,6 +843,9 @@ yandexMusic.prototype.pushState = function(state) {
 
 yandexMusic.prototype.explodeUri = function(curUri) {
     var self = this;
+
+    // No wait for it
+    self.checkUid();
 
     var response;
     var uriParts = curUri.split('/');
