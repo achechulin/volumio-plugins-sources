@@ -1029,7 +1029,7 @@ yandexMusic.prototype._search = function (text, type) {
         block = resp.result.tracks;
         if (block && block.results.length > 0) {
             response.items.push({"type": "title", "title": self.getI18n('SEARCH_SONGS_SECTION')});
-            items = block.results.map(function (x) { return p.albumToAlbum(x); });
+            items = block.results.map(function (x) { return p.trackToFolder(x); });
             for (var i = 0; i < items.length; ++i) {
                 response.items.push(items[i]);
             }

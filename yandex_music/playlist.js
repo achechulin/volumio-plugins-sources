@@ -49,6 +49,27 @@ Playlist.prototype.trackToSong = function(track, album, artist, playlist_id) {
     };
 };
 
+Playlist.prototype.trackToFolder = function(track) {
+    var alb = track.albums[0] ? track.albums[0] : false;
+    var art = track.artists[0] ? track.artists[0] : false;
+    var id = alb ? (track.id + ':' + alb.id) : track.id;
+    return {
+        id: id,
+        service: 'yandex_music',
+        type: 'folder',
+        name: track.title,
+        title: track.title,
+        album: alb ? alb.title : '',
+        artist: art ? art.name : '',
+        duration: Math.round(track.durationMs / 1000),
+        albumart: getCoverUri(track.coverUri, 200),
+        uri: 'yandex_music/track/' + id,
+        samplerate: '',
+        bitdepth: '',
+        trackType: ''
+    };
+};
+
 Playlist.prototype.landingToPlaylist = function(landing) {
     var id = landing.uid + ':' + landing.kind;
     var cover_uri = (landing.cover.uri) ? landing.cover.uri : (
