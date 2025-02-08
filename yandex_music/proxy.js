@@ -11,6 +11,29 @@ var querystring = require('querystring');
 // So we create proxy to change response headers from 'Content-Type: audio/mpeg'
 // to 'Content-Type: audio/flac'
 
+function pipeline(src, dst) {
+    src.on('data', (chunk) => {
+        if (!dst.write(chunk)) {
+            //src.pause();
+        }
+    });
+    src.on('end', () => {
+        dst.end();
+    });
+    src.on('error', (err) => {
+        dst.end();
+    });
+    dst.on('drain', () => {
+        src.resume();
+    });
+    dst.on('close', () => {
+        src.destroy();
+    });
+    dst.on('error', (err) => {
+        src.destroy();
+    });
+}
+
 function Proxy(logger) {
     var self = this;
 
@@ -30,14 +53,13 @@ Proxy.prototype.start = function() {
             var req_codec = query.query['codec'];
             var req_url = query.query['url'];
             var req_url_info = url.parse(req_url);
+            var req_headers = req.headers;
+            delete req_headers['host'];
             const options = {
                 host: req_url_info.hostname,
                 port: req_url_info.port,
                 path: req_url_info.path,
-                headers: {
-                    'user-agent': 'MPD',
-                    'accept': '*/*',
-                },
+                headers: req_headers,
             };
             const proxy = https.request(options, function (r) {
                 if (req_codec == 'flac') {
@@ -46,7 +68,8 @@ Proxy.prototype.start = function() {
                     r.headers['content-type'] = 'audio/x-aac';
                 }
                 res.writeHead(r.statusCode, r.headers);
-                r.pipe(res);
+                //r.pipe(res);
+                pipeline(r, res);
             });
             req.pipe(proxy);
         } catch (e) {
