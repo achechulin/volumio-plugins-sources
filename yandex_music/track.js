@@ -53,14 +53,14 @@ function getTrackV2(client, track_id, logger) {
     track_id = ids[0];
 
     var now = new Date().getTime();
-    var m = (PREFER_MP3) ? `${now}${track_id}losslessflacmp3raw` : `${now}${track_id}losslessflacaache-aacmp3raw`;
+    var m = (PREFER_MP3) ? `${now}${track_id}losslessflacmp3flac-mp4raw` : `${now}${track_id}losslessflacaache-aacmp3flac-mp4aac-mp4he-aac-mp4raw`;
     var s = crypto.createHmac('sha256', 'kzqU4XhfCaY6B6JTHODeq5').update(m).digest("base64");
     s = s.replace('=', '');
     var params = {
         'ts': now,
         'trackId': track_id,
         'quality': 'lossless',
-        'codecs': (PREFER_MP3) ? 'flac,mp3' : 'flac,aac,he-aac,mp3',
+        'codecs': (PREFER_MP3) ? 'flac,mp3,flac-mp4' : 'flac,aac,he-aac,mp3,flac-mp4,aac-mp4,he-aac-mp4',
         'transports': 'raw',
         'sign': s,
     };
@@ -70,8 +70,9 @@ function getTrackV2(client, track_id, logger) {
         query: params,
     }).then(function (resp) {
         var info = resp.result.downloadInfo;
+        var ext = "";
         var url;
-        if (info.codec == 'flac' || info.codec == 'aac' || PREFER_PROXY) {
+        if (info.codec == 'flac' || info.codec == 'aac' || info.transport == 'encraw' || PREFER_PROXY) {
             // MPD requires proper Content-Type header for FLAC decoding,
             // so we are using local proxy to change headers.
             // Also faad, default decoder for AAC, fails with
@@ -79,10 +80,17 @@ function getTrackV2(client, track_id, logger) {
             // to switch to ffmpeg decoder.
             // And .flac file extension added to url so that the UI can show FLAC icon.
             // But .aac file extension selects faad decoder, and will lead to error.
+            if (info.codec == 'flac' || info.codec == 'flac-mp4') {
+                ext = '.flac';
+            } else if (info.codec == 'mp3') {
+                ext = '.mp3';
+            }
             url = 'http://localhost:6601/?' + querystring.stringify({
                 'codec': info.codec,
+                'transport': info.transport,
+                'key': (info.key) ? info.key : '',
                 'url': info.url,
-                'ext': (info.codec == 'flac' || info.codec == 'mp3') ? '.' + info.codec : '',
+                'ext': ext,
             });
         } else {
             // MP3 plays directly, and UI show MP3 icon.
