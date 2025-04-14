@@ -31,6 +31,7 @@ function yandexMusic(context) {
     self.titles = {};
     self.playlists = {};
     self.current_track = false;
+    self.positionAtPrefetch = -1;
 
     self.proxy = new proxy();
 }
@@ -53,6 +54,8 @@ yandexMusic.prototype.onStart = function() {
 
     self.addToBrowseSources();
     self.mpdPlugin = self.commandRouter.pluginManager.getPlugin('music_service', 'mpd');
+
+    self.commandRouter.addCallback('volumioPushState', self.onPushState.bind(self));
 
     self.initClient();
 
@@ -715,6 +718,8 @@ yandexMusic.prototype.clearAddPlayTrack = function(track) {
     var playlist_id = (ids.length > 0) ? ids[1] : '';
     var track_uri;
 
+    self.positionAtPrefetch = -1;
+
     return self.mpdPlugin.sendMpdCommand('stop', [])
         .then(function () {
             return self.mpdPlugin.sendMpdCommand('clear', []);
@@ -758,6 +763,8 @@ yandexMusic.prototype.prefetch = function(track) {
 
     var track_id = track.uri.split('/').pop();
 
+    self.positionAtPrefetch = self.commandRouter.stateMachine.currentPosition;
+
     return getTrackUrl(self.client, track_id, self.hq, self.logger)
         .then(function (data) {
             return self.mpdPlugin.sendMpdCommand('addid "' + data.uri + '"', [])
@@ -781,6 +788,20 @@ yandexMusic.prototype.prefetch = function(track) {
             self.onTrackChanged();
             return libQ.resolve();
         });
+}
+
+// volumioPushState callback
+yandexMusic.prototype.onPushState = function (state) {
+    var self = this;
+
+    // Volumio 3 increasePlaybackTimer set isConsume to false,
+    // and prefetched track does not display metadata
+    if (self.positionAtPrefetch >= 0) {
+        if (state && state.service == 'yandex_music') {
+            self.commandRouter.stateMachine.setConsumeUpdateService('mpd');
+            self.positionAtPrefetch = -1;
+        }
+    }
 }
 
 // Seek
